@@ -1,18 +1,20 @@
 #! /usr/bin/env node
-const { program } = require('commander')
+// noinspection RequiredAttributes
+
+const { program, Option } = require('commander')
 const figlet = require('figlet')
 const chalk = require('chalk')
 const spawn = require('cross-spawn')
+const exec = require('child_process').exec;
 
 const list = require('./commands/list')
 const add = require('./commands/add')
 const markDone = require('./commands/markDone')
 const removeDone = require('./commands/removeDone')
 
-//console.log(chalk.yellow(figlet.textSync('Glow', { horizontalLayout: 'full' })))
-
-program.version('0.0.1', '-v, --version', 'output the current version')
-program.option('-c, --config <path>', 'set config path', './deploy.conf')
+program.version('0.0.1', '--version', 'output the current version')
+program.addHelpText('beforeAll', chalk.yellow(figlet.textSync('Glow', { horizontalLayout: 'full' })))
+program.addHelpText('beforeAll', 'Glow v0.0.1')
 program.showSuggestionAfterError()
 
 program
@@ -37,35 +39,83 @@ program
     .action(removeDone)
 
 program
-    .command('dotnet').alias('d')
-    .description('Execute dotnet --version command')
-    .action(() => {
-        console.log(chalk.cyan('dotnet --version'))
-        spawn.sync('dotnet --version', { stdio: 'inherit' })
+    .command('git')
+    .description('Execute git commands')
+    .option('-u, --username', 'Show git username')
+    .option('-e, --email', 'Show git email')
+    .action((options) => {
+        let executed = false
+		function getGitUsername(callback) {
+			execute("git config --global user.name", (name) => {
+                callback(name.replace("\n", ""))
+			})
+		}        
+		function getGitEmail(callback) {
+            execute("git config --global user.email", (email) => {
+                callback(email.replace("\n", ""))
+            })
+		}
+        if (options.username) {
+            executed = true
+            getGitUsername((name, error) => {
+                if (name && name?.length > 0) console.log(name)
+                if (error && error?.length > 0) console.log(error)
+            })
+        }
+        if (options.email) {
+            executed = true
+            getGitEmail((email, error) => {
+                if (email && email?.length > 0) console.log(email)
+                if (error && error?.length > 0) console.log(error)
+            })
+        }
+        if (executed === false) {
+            console.log(chalk.yellow('No valid option found! Use "glow git -h" for help'))
+            program.help({ error: true })
+        }
     })
 
 program
-  .command('setup [env]')
-  .description('run setup commands for all envs')
-  .option('-s, --setup_mode <mode>', 'Which setup mode to use', 'normal')
-  .action((env, options) => {
-    env = env || 'all';
-    console.log('read config from %s', program.opts().config);
-    console.log('setup for %s env(s) with %s mode', env, options.setup_mode);
-  });
+    .command('gitversion').alias('gv')
+    .description('Execute dotnet gitversion')
+    .addOption(new Option('-v, --variable <var>', 'Which variable to use')
+        .default('SemVer').choices(['SemVer', 'MajorMinorPatch', 'NuGetVersionV2']))
+    .action((options) => {
+        function getGitVersion(cb) {
+            execute(`dotnet gitversion "${process.cwd()}" /showvariable ${options['variable']}`, (version, stdout, stderr) => {
+                cb(version.replace("\n", ""), stdout, stderr)
+            })
+        }
+        getGitVersion((version, error) => {
+            if (version && version?.length > 0) console.log(version)
+            if (error && error?.length > 0) console.log(error)
+        })
+    })
+    .addHelpText('after', `
+Examples:
+  $ glow gv
+  $ glow gv -v MajorMinorPatch`
+)
 
 program
-    .command('exec <script>')
-    .alias('ex')
-    .description('execute the given remote cmd')
-    .option('-e, --exec_mode <mode>', 'Which exec mode to use', 'fast')
-    .action((script, options) => {
-      console.log('read config from %s', program.opts().config);
-      console.log('exec "%s" using %s mode and config %s', script, options.exec_mode, program.opts().config);
-    }).addHelpText('after', `
-  Examples:
-    $ deploy exec sequential
-    $ deploy exec async`
-    );
+    .command('dotnet').alias('d')
+    .description('Execute dotnet --version command')
+    .action(() => {
+        console.log(chalk.grey('dotnet --version'))
+        spawn.sync('dotnet --version', { stdio: 'inherit' })
+    })
+
+//spawn.sync('dotnet gitversion \"' + process.cwd() + '\"', ['/showvariable', 'semver'], { stdio: 'inherit' })
+
+function execute(command, callback){
+    console.log(chalk.grey(command))
+    exec(command, (error, stdout, stderr) => {
+        if (stderr && stderr?.length > 0) {
+            callback(stdout, chalk.red(error), chalk.red(stderr))
+        } else {
+            callback(stdout)
+        }
+    })
+}
 
 program.parse()
