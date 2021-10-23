@@ -24,6 +24,7 @@
     "commander": "^8.3.0",
     "conf": "^10.0.3",
     "cross-spawn": "^7.0.3",
-    "figlet": "^1.5.2"
+    "figlet": "^1.5.2",
+    "semver": "^7.3.5"
   }
 }
