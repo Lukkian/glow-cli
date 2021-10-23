@@ -14,6 +14,7 @@ const removeDone = require('./commands/removeDone')
 
 program.version('0.0.1', '--version', 'output the current version')
 program.option('-d, --debug', 'output extra debugging information and does not execute external commands')
+program.option('--unsafe', 'bypass enforced debug mode on pre-release versions, please be careful and do not use indiscriminately')
 program.addHelpText('beforeAll', chalk.yellow(figlet.textSync('Glow', { horizontalLayout: 'full' })))
 program.addHelpText('beforeAll', 'Glow v0.0.1')
 program.showSuggestionAfterError()
@@ -149,7 +150,7 @@ function validateVersion(value) {
 function executeSpawn(command, byPassDebugMode) {
     console.log(chalk.grey(command))
     // byPassDebugMode should be used for safe and (basically) read-only commands
-    if (byPassDebugMode) { } else
+    if (program.opts().unsafe || byPassDebugMode) { } else
     if (program.opts().debug) {
         console.log(chalk.yellowBright(`DEBUG MODE will not allow ${chalk.underline('most')} external commands`))
         return
@@ -161,7 +162,7 @@ function executeSpawn(command, byPassDebugMode) {
 function execute(command, callback, byPassDebugMode){
     console.log(chalk.grey(command))
     // byPassDebugMode should be used for safe and (basically) read-only commands
-    if (byPassDebugMode) { } else
+    if (program.opts().unsafe || byPassDebugMode) { } else
     if (program.opts().debug) {
         console.log(chalk.yellowBright(`DEBUG MODE will not allow ${chalk.underline('most')} external commands`))
         return
