@@ -6,6 +6,7 @@ const chalk = require('chalk')
 const spawn = require('cross-spawn')
 const exec = require('child_process').exec
 const semver = require('semver')
+var commandExistsSync = require('command-exists').sync
 
 const list = require('./commands/list')
 const add = require('./commands/add')
@@ -43,20 +44,34 @@ program
 program
     .command('git')
     .description('Execute git commands')
+    .argument('[push-all]', 'push all tags and branches')
     .option('-u, --username', 'Show git username')
     .option('-e, --email', 'Show git email')
-    .action((options) => {
+    .action((pushAll, options) => {
+        if (commandExistsSync('git') !== true) {
+            console.log(chalk.red('git not found'))
+            return
+        }
+
         let executed = false
+
+        if (pushAll) {
+            executed = true
+            executeSpawn('git push --all origin -u')
+        }
+
 		function getGitUsername(callback) {
 			execute("git config --global user.name", (name) => {
                 callback(name.replace("\n", ""))
 			}, true)
-		}        
+		}
+        
 		function getGitEmail(callback) {
             execute("git config --global user.email", (email) => {
                 callback(email.replace("\n", ""))
             }, true)
 		}
+
         if (options.username) {
             executed = true
             getGitUsername((name, error) => {
@@ -64,6 +79,7 @@ program
                 if (error && error?.length > 0) console.log(error)
             })
         }
+
         if (options.email) {
             executed = true
             getGitEmail((email, error) => {
@@ -71,9 +87,9 @@ program
                 if (error && error?.length > 0) console.log(error)
             })
         }
+
         if (executed === false) {
-            console.log(chalk.yellow('No valid option found! Use "glow git -h" for help'))
-            program.help({ error: true })
+            console.log(chalk.yellow('No valid option or argument found! Use "glow git -h" for help'))
         }
     })
 
